@@ -16,7 +16,7 @@ from .settings_generator import ServerSettingsGenerator
 class Server:
     client = None
 
-    def __init__(self, addr: (str, None) = None, port: (int, None) = None, log_level: (int, str) = None):
+    def __init__(self, addr: (str, None) = None, port: (int, None) = None, log_level: (int, None) = None):
 
         self.settings = ServerSettingsGenerator(settings)['SERVER_SETTINGS']
 
