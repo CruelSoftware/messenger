@@ -1,3 +1,3 @@
 SERVER_SETTINGS = {
-    "PORT":'9999'
+    "PORT":9999
 }

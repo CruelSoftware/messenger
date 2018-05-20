@@ -7,3 +7,4 @@ class LogHandler:
         logging.basicConfig(format=u'%(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
                             level=log_level, filename=filename)
         self.logger = logging.getLogger(logger_name)
+        self.logger.level = log_level

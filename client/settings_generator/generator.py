@@ -9,5 +9,6 @@ class ClientSettingsGenerator(dict, metaclass=Singleton):
         _server_settings.update({
             'SERVER': _server_settings.get('SERVER', 'localhost'),
             'PORT': _server_settings.get('PORT', '7777'),
+            'LOG_LEVEL': _server_settings.get('LOG_LEVEL', 4),
         })
         self.update({'CLIENT_SETTINGS': _server_settings})

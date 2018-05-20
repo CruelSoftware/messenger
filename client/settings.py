@@ -1,4 +1,4 @@
 CLIENT_SETTINGS = {
-    "SERVER": 'localhost',
-    "PORT": '9999',
+    "SERVER": 'vagrant',
+    "PORT": 9999,
 }
