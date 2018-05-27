@@ -13,7 +13,8 @@ class ServerSettingsGenerator(dict, metaclass=Singleton):
             'PORT': _server_settings.get('PORT', '7777'),
             'QUERIES_AMOUNT': int(_server_settings.get('QUERIES_AMOUNT', 10)),
             'LOG_LEVEL': _server_settings.get('LOG_LEVEL', 4),
-            'LOG_FILE_PATH': _server_settings.get('LOG_FILE_PATH', 'logs/server.log')
+            'LOG_FILE_PATH': _server_settings.get('LOG_FILE_PATH', 'logs/server.log'),
+            'SOCKET_TIMEOUT': _server_settings.get('SOCKET_TIMEOUT', 0.3),
         })
         self.update({'SERVER_SETTINGS': _server_settings})
 

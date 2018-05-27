@@ -24,4 +24,3 @@ def resources_log(f):
         return result
 
     return wrapper
-

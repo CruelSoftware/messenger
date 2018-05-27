@@ -20,11 +20,10 @@ class LogHandler:
     def create_rotation_log(self, logger_name):
         self.logger = logging.getLogger(logger_name)
         handler = logging.handlers.RotatingFileHandler(
-            "{}_rotation.log".format(self.filename), maxBytes=2048, backupCount=7)
+            "{}_rotation.log".format(self.filename), maxBytes=2048 * 100 * 100, backupCount=7)
         f = logging.Formatter(log_format)
         handler.setFormatter(f)
         self.logger.addHandler(handler)
-
 
     @staticmethod
     def check_log_path(filename):

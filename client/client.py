@@ -9,8 +9,7 @@ from . import settings
 
 
 class Client:
-
-    client = None
+    client, socket = None, None
     settings = ClientSettingsGenerator(settings)['CLIENT_SETTINGS']
     log_level = settings['LOG_LEVEL']
     log = LogHandler(logger_name='client', filename=settings['LOG_FILE_PATH'], log_level=log_level)
@@ -18,10 +17,6 @@ class Client:
     def __init__(self, addr: (str, None) = None, port: (int, None) = None, user: str = settings['DEFAULT_USER']):
 
         self.user = user
-        try:
-            self.socket = s.socket(s.AF_INET, s.SOCK_STREAM)
-        except s.error:
-            self.log.logger.error('Failed to create socket')
 
         if not addr:
             self.addr = self.settings['SERVER']
@@ -31,11 +26,12 @@ class Client:
 
     @resources_log
     def start(self):
-        is_connected = self.connect_to_server(self.addr, self.port)
-        if is_connected:
-            response = self.send_presence()
-            self.log.logger.info(self.decode_response(response))
-        self.socket.close()
+        with s.socket(s.AF_INET, s.SOCK_STREAM) as self.socket:
+            is_connected = self.connect_to_server(self.addr, self.port)
+            if is_connected:
+                while True:
+                    response = self.send_presence()
+                    self.log.logger.info(self.decode_response(response))
 
     @resources_log
     def connect_to_server(self, server: str, port: int):
@@ -49,7 +45,11 @@ class Client:
     @staticmethod
     @resources_log
     def decode_response(data: (bytes, bytearray)) -> (dict, list):
-        return json.loads(data.decode('utf-8'))
+        try:
+            response = json.loads(data.decode('utf-8'))
+            return response
+        except json.JSONDecodeError as e:
+            return "Failed to parse response: {}".format(str(e))
 
     @resources_log
     def request(self, data: (dict, list)) -> (bytes, bytearray):
@@ -63,6 +63,6 @@ class Client:
                 "type": "status",
                 "user": {
                     "account_name": self.user
-                    }
+                }
                 }
         return self.request(data)
