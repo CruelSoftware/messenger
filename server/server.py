@@ -8,7 +8,8 @@ from core.status import (
     STATUS_200_OK,
     STATUS_400_BAD_REQUEST,
     STATUS_401_UNAUTHORIZED,
-    STATUS_500_INTERNAL_ERROR
+    STATUS_500_INTERNAL_ERROR,
+    STATUS_403_NOT_ALLOWED
 )
 
 from . import settings
@@ -19,11 +20,10 @@ class Server:
     client = None
     settings = ServerSettingsGenerator(settings)['SERVER_SETTINGS']
     log_level = settings['LOG_LEVEL']
-
+    log = LogHandler(logger_name='server', filename=settings['LOG_FILE_PATH'], log_level=log_level, log_rotation=True)
 
     def __init__(self, addr: (str, None) = None, port: (int, None) = None):
-        self.log = LogHandler(logger_name='server', filename=self.settings['LOG_FILE_PATH'],
-                         log_level=self.log_level, log_rotation=True)
+
         self.accept_address = addr
         try:
             self.socket = s.socket(s.AF_INET, s.SOCK_STREAM)
@@ -44,9 +44,8 @@ class Server:
                 address_match = self.accept_address == address
             data = self.client.recv(16384)
             self.log.logger.info('Client with ip-address {} connected'.format(address))
-            response = ResponseHandler(data, address_match)
-            self.response(response)
-            #self.socket.close()
+            response_data = ResponseHandler(data, address_match).response_data
+            self.response(response_data)
 
     @resources_log
     def response(self, data):
@@ -54,9 +53,15 @@ class Server:
             self.client.send(json.dumps(data).encode('utf-8'))
 
 
-class ResponseHandler(dict):
+class ResponseHandler:
+
+    response_data = None
+    required_parameters = ['action', 'time', 'type', 'user']
+    available_actions = ['presence', 'message']
+
     action_type_mapping = {
-        'presence': {'response': STATUS_200_OK, 'alert': 'optional message'}
+        'presence': {'response': STATUS_200_OK, 'alert': 'optional message'},
+        'message': {'response': STATUS_200_OK},
     }
 
     error_type_mapping = {
@@ -70,16 +75,29 @@ class ResponseHandler(dict):
 
         try:
             data = json.loads(data.decode('utf-8'))
-            action = data.get('action')
 
-            if not address_match:
-                self.update(self.error_type_mapping[STATUS_401_UNAUTHORIZED])
-
-            elif not action:
-                self.update(self.error_type_mapping[STATUS_400_BAD_REQUEST])
-
-            else:
-                self.update(self.action_type_mapping[action])
+            for key in self.required_parameters:
+                if key not in data.keys():
+                    self.response_data = (self.error_type_mapping[STATUS_400_BAD_REQUEST])
+                    break
 
         except Exception as e:
-            self.update({"response": STATUS_500_INTERNAL_ERROR, "error": str(e)})
+            self.response_data = {"response": STATUS_500_INTERNAL_ERROR, "error": str(e)}
+
+        if not self.response_data:
+            action = data.get('action')
+            if not address_match:
+                self.response_data = self.error_type_mapping[STATUS_403_NOT_ALLOWED]
+
+            elif not action:
+                self.response_data = self.error_type_mapping[STATUS_400_BAD_REQUEST]
+
+            else:
+                method_to_call = getattr(self, action)
+                self.response_data = method_to_call(action)
+
+    def presence(self, action):
+        return self.action_type_mapping[action]
+
+    def message(self, action):
+        pass
