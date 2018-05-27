@@ -6,7 +6,6 @@ def create_parser():
     parser_ = argparse.ArgumentParser()
     parser_.add_argument('-addr', type=str, help='Ip address to listen')
     parser_.add_argument('-port', type=int, help='Port to listen ')
-    parser_.add_argument('-log_level', type=int, help='log_level')
     return parser_
 
 

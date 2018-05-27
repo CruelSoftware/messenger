@@ -1,5 +1,5 @@
 import json
-import datetime
+import time
 import socket as s
 
 from logger import LogHandler
@@ -9,13 +9,13 @@ from . import settings
 
 class Client:
 
-    def __init__(self, addr: (str, None) = None, port: (int, None) = None, log_level: (int, None) = None):
+    client = None
+    settings = ClientSettingsGenerator(settings)['CLIENT_SETTINGS']
+    log_level = settings['LOG_LEVEL']
+    log = LogHandler(logger_name='client', filename=settings['LOG_FILE_PATH'], log_level=log_level)
 
-        self.settings = ClientSettingsGenerator(settings)['CLIENT_SETTINGS']
-        if not log_level:
-            log_level = self.settings['LOG_LEVEL']
+    def __init__(self, addr: (str, None) = None, port: (int, None) = None):
 
-        self.log = LogHandler(logger_name='client', filename='client.log', log_level=log_level)
         try:
             self.socket = s.socket(s.AF_INET, s.SOCK_STREAM)
         except s.error:
@@ -28,16 +28,19 @@ class Client:
             self.port = self.settings['PORT']
 
     def start(self):
-        self.connect_to_server(self.addr, self.port)
-        response = self.send_presence()
-        self.log.logger.info(self.decode_response(response))
+        is_connected = self.connect_to_server(self.addr, self.port)
+        if is_connected:
+            response = self.send_presence()
+            self.log.logger.info(self.decode_response(response))
         self.socket.close()
 
     def connect_to_server(self, server: str, port: int):
         try:
             self.socket.connect((server, port))
+            return True
         except (s.error, ConnectionRefusedError):
-            self.log.logger.error('Failed to connect to server {} on port {}').format(server, port)
+            self.log.logger.error('Failed to connect to server {} on port {}'.format(server, port))
+            return False
 
     @staticmethod
     def decode_response(data: (bytes, bytearray)) -> (dict, list):
@@ -48,5 +51,5 @@ class Client:
         return self.socket.recv(16384)
 
     def send_presence(self) -> (bytes, bytearray):
-        data = {"action": "presence", "time": str(datetime.datetime.utcnow()), "type": "status"}
+        data = {"action": "presence", "time": str(time.time()), "type": "status"}
         return self.request(data)
