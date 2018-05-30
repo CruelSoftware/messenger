@@ -1,5 +1,4 @@
 import json
-import time
 import socket as s
 
 from logger import LogHandler
@@ -17,6 +16,7 @@ class Client:
     def __init__(self, addr: (str, None) = None, port: (int, None) = None, user: str = settings['DEFAULT_USER']):
 
         self.user = user
+        self._user_data = {"account_name": self.user}
 
         if not addr:
             self.addr = self.settings['SERVER']
@@ -54,15 +54,36 @@ class Client:
     @resources_log
     def request(self, data: (dict, list)) -> (bytes, bytearray):
         self.socket.send(json.dumps(data).encode('utf-8'))
-        return self.socket.recv(16384)
+        return self.socket.recv(2048)
 
     @resources_log
     def send_presence(self) -> (bytes, bytearray):
-        data = {"action": "presence",
-                "time": str(time.time()),
-                "type": "status",
-                "user": {
-                    "account_name": self.user
-                }
-                }
+        data = RequestHandler(action_='presence', type_='status', user_data=self._user_data)
         return self.request(data)
+
+
+class RequestHandler(dict):
+
+    settings = ClientSettingsGenerator(settings)
+    client_settings = settings['CLIENT_SETTINGS']
+
+    log_level = client_settings['LOG_LEVEL']
+    log = LogHandler(logger_name='client', filename=client_settings['LOG_FILE_PATH'], log_level=log_level)
+
+    def __init__(self, action_: str, type_: str, user_data: dict, **kwargs):
+        super().__init__()
+        method_to_call = None
+
+        self.update(self.settings['BASE_TEMPLATE'])
+
+        try:
+            method_to_call = getattr(self, action_)
+        except AttributeError:
+            self.log.logger.error('ERROR: wrong action {}'.format(action_))
+
+        if method_to_call:
+            method_to_call(action_, type_, user_data, kwargs)
+
+    @resources_log
+    def presence(self, action_, type_, user_data, **kwargs):
+        self.update({"action": action_, "type": type_, "user": user_data, **kwargs})

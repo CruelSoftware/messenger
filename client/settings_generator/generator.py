@@ -1,3 +1,5 @@
+import time
+
 from core import Singleton
 
 
@@ -14,3 +16,17 @@ class ClientSettingsGenerator(dict, metaclass=Singleton):
             'DEFAULT_USER': _server_settings.get('DEFAULT_USER', 'Guest'),
         })
         self.update({'CLIENT_SETTINGS': _server_settings})
+
+
+class BaseTemplateSettings(dict, metaclass=Singleton):
+
+    def __init__(self, settings):
+        super().__init__()
+        _template_settings = getattr(settings, 'TEMPLATE_SETTINGS', {})
+        _template_settings.update({
+            'action': '',
+            'time': str(time.time()),
+            'type': '',
+            'user': {},
+        })
+        self.update({'TEMPLATE_SETTINGS': _template_settings})
