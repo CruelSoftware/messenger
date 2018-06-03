@@ -16,7 +16,6 @@ class Client:
     def __init__(self, addr: (str, None) = None, port: (int, None) = None, user: str = settings['DEFAULT_USER']):
 
         self.user = user
-        self._user_data = {"account_name": self.user}
 
         if not addr:
             self.addr = self.settings['SERVER']
@@ -26,12 +25,24 @@ class Client:
 
     @resources_log
     def start(self):
+        send_presence = True
         with s.socket(s.AF_INET, s.SOCK_STREAM) as self.socket:
             is_connected = self.connect_to_server(self.addr, self.port)
             if is_connected:
                 while True:
-                    response = self.send_presence()
-                    self.log.logger.info(self.decode_response(response))
+                    if send_presence:
+                        response = self.decode_response(self.send_presence())
+                        if int(str(response.get('response'))[0]) != 2:
+                            self.log.logger.error('Wrong server response: {}'.format(response))
+                            break
+                        send_presence = False
+                        self.log.logger.info(response)
+
+                    message = input('Enter your message: ')
+                    if message == 'exit':
+                        break
+                    response = self.decode_response(self.send_message(message=message))
+                    print('Response: {}'.format(response))
 
     @resources_log
     def connect_to_server(self, server: str, port: int):
@@ -58,7 +69,14 @@ class Client:
 
     @resources_log
     def send_presence(self) -> (bytes, bytearray):
-        data = RequestHandler(action_='presence', type_='status', user_data=self._user_data)
+        kwargs = {'user': {"account_name": self.user}, 'type':'status'}
+        data = RequestHandler(action='presence', **kwargs)
+        return self.request(data)
+
+    @resources_log
+    def send_message(self, message: str, to: str = 'Guest') -> (bytes, bytearray):
+        kwargs = {'to': to, 'from': self.user, 'encoding': 'utf-8', 'message': message}
+        data = RequestHandler(action='msg', **kwargs)
         return self.request(data)
 
 
@@ -70,20 +88,24 @@ class RequestHandler(dict):
     log_level = client_settings['LOG_LEVEL']
     log = LogHandler(logger_name='client', filename=client_settings['LOG_FILE_PATH'], log_level=log_level)
 
-    def __init__(self, action_: str, type_: str, user_data: dict, **kwargs):
+    def __init__(self, action, **kwargs):
         super().__init__()
         method_to_call = None
 
-        self.update(self.settings['BASE_TEMPLATE'])
+        self.update(self.settings['TEMPLATE_SETTINGS'])
 
         try:
-            method_to_call = getattr(self, action_)
+            method_to_call = getattr(self, action)
         except AttributeError:
-            self.log.logger.error('ERROR: wrong action {}'.format(action_))
+            self.log.logger.error('ERROR: wrong action {}'.format(action))
 
         if method_to_call:
-            method_to_call(action_, type_, user_data, kwargs)
+            method_to_call(action, **kwargs)
 
     @resources_log
-    def presence(self, action_, type_, user_data, **kwargs):
-        self.update({"action": action_, "type": type_, "user": user_data, **kwargs})
+    def presence(self, action, **kwargs):
+        self.update({"action": action, **kwargs})
+
+    @resources_log
+    def msg(self, action: str, **kwargs):
+        self.update({"action": action, **kwargs})

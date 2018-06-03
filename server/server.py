@@ -57,10 +57,10 @@ class Server:
                 wait = 0
                 try:
                     r, w, e = select.select(self.clients, self.clients, [], wait)
-                    self.log.logger.info('пишут: {}'.format(w))
-                    self.log.logger.info('читают: {}'.format(r))
+                    self.log.logger.info('writing: {}'.format(w))
+                    self.log.logger.info('reading: {}'.format(r))
                 except Exception as e:
-                    self.log.logger.info("Клиент отключился".format(str(e)))
+                    self.log.logger.info("Client disconnected: {}".format(str(e)))
 
                 self.clients_requests = self.read_requests(r, self.clients)  # Save clients requests
                 self.write_responses(self.clients_requests, w, self.clients)  # Send responses to clients
@@ -68,8 +68,12 @@ class Server:
     @resources_log
     def response(self, data: dict, client):
         self.log.logger.info("Sending response to client {}: {}".format(client, data))
-        client.send(json.dumps(data).encode('utf-8'))
+        try:
+            client.send(json.dumps(data).encode('utf-8'))
+        except BrokenPipeError as e:
+            self.log.logger.error("Client disconected : {} ({})".format(client, e))
 
+    @resources_log
     def read_requests(self, r_clients, all_clients):
         responses = {}  # server responses dict
 
@@ -83,6 +87,7 @@ class Server:
 
         return responses
 
+    @resources_log
     def write_responses(self, requests, w_clients, all_clients):
 
         for sock in w_clients:
@@ -100,15 +105,15 @@ class Server:
 
 class ResponseHandler:
     response_data = None
-    required_parameters = ['action', 'time', 'type', 'user']
-    available_actions = ['presence', 'message']
+    required_parameters = ['action', 'time']
+    available_actions = ['presence', 'msg']
     settings = ServerSettingsGenerator(settings)['SERVER_SETTINGS']
     log_level = settings['LOG_LEVEL']
     log = LogHandler(logger_name='server', filename=settings['LOG_FILE_PATH'], log_level=log_level, log_rotation=True)
 
     action_type_mapping = {
         'presence': {'response': STATUS_200_OK, 'alert': 'optional message'},
-        'message': {'response': STATUS_200_OK},
+        'msg': {'response': STATUS_200_OK},
     }
 
     error_type_mapping = {
@@ -148,5 +153,5 @@ class ResponseHandler:
         return self.action_type_mapping[action]
 
     @resources_log
-    def message(self, action):
-        pass
+    def msg(self, action):
+        return self.action_type_mapping[action]

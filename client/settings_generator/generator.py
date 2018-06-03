@@ -15,6 +15,13 @@ class ClientSettingsGenerator(dict, metaclass=Singleton):
             'LOG_FILE_PATH': _server_settings.get('LOG_FILE_PATH', 'logs/client.log'),
             'DEFAULT_USER': _server_settings.get('DEFAULT_USER', 'Guest'),
         })
+
+        _template_settings = getattr(settings, 'TEMPLATE_SETTINGS', {})
+        _template_settings.update({
+            'action': '',
+            'time': str(time.time()),
+        })
+        self.update({'TEMPLATE_SETTINGS': _template_settings})
         self.update({'CLIENT_SETTINGS': _server_settings})
 
 
@@ -26,7 +33,5 @@ class BaseTemplateSettings(dict, metaclass=Singleton):
         _template_settings.update({
             'action': '',
             'time': str(time.time()),
-            'type': '',
-            'user': {},
         })
         self.update({'TEMPLATE_SETTINGS': _template_settings})

@@ -8,6 +8,4 @@ CLIENT_SETTINGS = {
 
 TEMPLATE_SETTINGS = {"action": "",
                      "time": str(time.time()),
-                     "type": "",
-                     "user": {},
                      }
